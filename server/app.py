@@ -21,10 +21,81 @@ api = Api(app)
 def index():
     return '<h1>Code challenge</h1>'
 
-@app.route('/restaurants')
-def restaurants():
 
-    pass
+
+### get all restaurants
+@app.route('/restaurants', methods = ['GET'])
+def restaurants():
+    restaurants = Restaurant.query.all()
+    restaurants_dict = [restaurant.to_dict() for restaurant in restaurants]
+
+    return make_response(jsonify(restaurants_dict), 200)
+
+
+@app.route('/restaurants/<int:id>', methods = ['GET'])
+def restaurantById(id):
+    restaurant = Restaurant.query.filter_by(id = id). first()
+    if restaurant:
+        restaurant_dict = restaurant.to_dict()
+        return make_response(jsonify(restaurant_dict), 200)
+    else:
+        return make_response({"error": "Restaurant not found"}, 404)
+    
+
+
+@app.route('/restaurants/<int:id>', methods = ['DELETE'])
+def restaurantByID(id):
+    restaurant = Restaurant.query.filter_by(id = id).first()
+    restaurant_pizza = RestaurantPizza.query.filter_by(restaurant_id = id).first()
+    
+    if restaurant:
+
+        db.session.delete(restaurant)
+        db.session.delete(restaurant_pizza)
+        db.session.commit()
+
+        return make_response( {}, 200)
+
+    else:
+        return make_response({ "error": "Restaurant not found" }, 404)
+    
+    ###################
+
+
+### get all pizzas
+@app.route('/pizzas', methods = ['GET'])
+def pizzas():
+    pizzas = Pizza.query.all()
+    pizzas_dict = [pizza.to_dict(rule = ("-pizza_pizza")) for pizza in pizzas]
+
+    return make_response(jsonify(pizzas_dict), 200)
+
+
+
+## post restaurant_pizzas
+@app.route('/restaurant_pizzas', methods = ['POST'])
+def postRestaurantPizza():
+
+    try:
+        new_restaurant_pizza = RestaurantPizza(
+            price = request.get_json()['price'],
+            pizza_id = request.get_json()['pizza_id'],
+            restaurant_id = request.get_json()['restaurant_id']
+        )
+
+        db.session.add(new_restaurant_pizza)
+        db.session.commit()
+
+        pizza = Pizza.query.filter(Pizza.id == new_restaurant_pizza.pizza_id).first()
+        pizza_dict = pizza.to_dict()
+
+        return make_response(jsonify(pizza_dict), 201)
+    
+    except ValueError:
+        return make_response({'errors' : ["validation errors"]}, 400)
+
+
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
